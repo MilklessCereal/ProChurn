@@ -311,7 +311,7 @@ def run_optuna_search(X_train: pd.DataFrame,y_train: pd.Series,n_trials: int) ->
         show_progress_bar=True,
     )
 
-    print(f"Best Optuna CV Brier Score: {study.best_value:.4f}")
+    print(f"Best Optuna CV PR-AUC (average precision): {study.best_value:.4f}")
     print(f"Best params: {study.best_params}")
 
     return study.best_params
@@ -325,13 +325,20 @@ def _get_grouped_importances(pipeline: Pipeline) -> dict[str, float]:
     base_estimator = pipeline.named_steps["model"].calibrated_classifiers_[0].estimator
     feature_names  = preprocessor.get_feature_names_out()
     importances    = base_estimator.feature_importances_
+    
+    # Original categorical columns, longest first so e.g. "StreamingTV" wins over "Streaming"
+    cat_cols = sorted(
+        next(cols for t_name, _, cols in preprocessor.transformers_ if t_name == "cat"),
+        key=len, reverse=True,
+    )
 
     grouped: dict[str, float] = {}
     for name, imp in zip(feature_names, importances):
-        name = name.split("__")[-1]
-        parts = name.rsplit("_", 1)
-        if len(parts) == 2 and not parts[1].isnumeric():
-            name = parts[0]
+        prefix, _, name = name.partition("__")
+        if prefix == "cat":
+            # One-hot output is "<column>_<category>"; map back to the source column
+            # (column names themselves may contain underscores, so don't split on them)
+            name = next((c for c in cat_cols if name.startswith(f"{c}_")), name)
         grouped[name] = grouped.get(name, 0.0) + imp
 
     return grouped
