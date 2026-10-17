@@ -180,20 +180,23 @@ def split_target_independent_var(df: pd.DataFrame, churn_col: str, customer_col:
     """
     drop_cols = [c for c in [churn_col, customer_col] if c and c in df.columns]
     X = df.drop(columns=drop_cols)
-    y = df[churn_col]
+    y_raw = df[churn_col]
     
-    y_list = y.tolist()
-    
-    for d in y_list:
-        if d is not type(int) | type(float):
-            y.map({"No": 0, "Yes": 1})
-            if y.isna().any():
-                raise ValueError(
-                    f"Churn column '{churn_col}' contains unexpected values: "
-                    f"{df[churn_col].unique().tolist()}. Expected 'Yes'/'No'."
-                )
+    if pd.api.types.is_numeric_dtype(y_raw) or pd.api.types.is_bool_dtype(y_raw):
+        # Already numeric/boolean labels (e.g. 0/1, True/False)
+        y = y_raw.astype(int)
+    else:
+        # Text labels: normalise case/whitespace, then map to 0/1
+        label_map = {"no": 0, "yes": 1, "false": 0, "true": 1, "0": 0, "1": 1}
+        y = y_raw.astype(str).str.strip().str.lower().map(label_map)
 
-    return X, y
+    if y.isna().any() or not set(y.unique()).issubset({0, 1}):
+        raise ValueError(
+            f"Churn column '{churn_col}' contains unexpected values: "
+            f"{y_raw.unique().tolist()}. Expected 'Yes'/'No' or 0/1."
+        )
+
+    return X, y.astype(int)
 
 
 # -----------------------------
