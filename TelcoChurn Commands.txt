@@ -1,0 +1,16 @@
+cd "C:\Users\User\Documents\Personal Programs\churn_project"
+
+python src/train_pipeline.py --company Telco_A --data data/WA_Fn-UseC_-Telco-Customer-Churn.csv --test_size 0.3
+python src/train_pipeline.py --company Telco_B --data data/data_telco_customer_churn.csv --test_size 0.3
+python src/predict_pipeline.py --company Telco_A --data data/WA_Fn-UseC_-Telco-Customer-Churn.csv --demo
+python src/predict_pipeline.py --company Telco_B --data data/data_telco_customer_churn.cs --demo
+
+Setup:
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+deactivate
+
+ollama pull llama3.2
+ollama serve
+taskkill /IM ollama.exe /F
