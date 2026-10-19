@@ -1,18 +1,15 @@
 {
     "features": [
         "Dependents",
-        "tenure",
-        "MultipleLines",
         "InternetService",
         "OnlineSecurity",
-        "OnlineBackup",
-        "DeviceProtection",
         "TechSupport",
         "StreamingTV",
         "StreamingMovies",
         "Contract",
         "PaperlessBilling",
-        "PaymentMethod"
+        "PaymentMethod",
+        "high_risk_contract"
     ],
     "ignore_columns": [
         "customerID",

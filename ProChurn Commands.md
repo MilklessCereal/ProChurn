@@ -1,12 +1,12 @@
 ## Run Training CLI Command Example
 <!-- REFER TO README FOR ARGUMENTS DEFINITIONS --> 
-python src/train_pipeline.py --company Telco_A --data data/"Data-Example-1.csv" --test_size 0.3
-python src/train_pipeline.py --company Telco_B --data data/"Data-Example-2.csv" --test_size 0.3
+python src/train_pipeline.py --company Telco_A --data data/"Data-Example-1.csv" --test_size 0.3 --model Model_name_X
+python src/train_pipeline.py --company Telco_B --data data/"Data-Example-2.csv" --test_size 0.3 --model Model_name_y
 
 ## Run Predict CLI command Example
 <!-- REFER TO README FOR ARGUMENTS DEFINITIONS --> 
-python src/predict_pipeline.py --company Telco_A --data data/"Data-Example-1.csv" --demo
-python src/predict_pipeline.py --company Telco_B --data data/"Data-Example-2.csv" --demo
+python src/predict_pipeline.py --company Telco_A --data data/"Data-Example-1.csv" --demo --model Model_name_X
+python src/predict_pipeline.py --company Telco_B --data data/"Data-Example-2.csv" --demo --model Model_name_y
 
 ## Ollama Hosting Commands
 <!-- Ollama must be Locally downloaded -->

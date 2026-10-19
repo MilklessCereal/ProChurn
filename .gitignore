@@ -5,3 +5,5 @@ TelcoChurn Commands.txt
 results/*
 !results/.gitkeep
 Personal-Ref
+data/*
+!data/.gitkeep
