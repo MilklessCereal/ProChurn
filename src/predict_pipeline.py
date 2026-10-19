@@ -43,6 +43,7 @@ def parse_args() -> argparse.Namespace:
         default=True,
         help="Use LLM-generated retention actions via Ollama (default, -no-llm for rule based recommendations)",
     )
+    parser.add_argument("--model",     required=True,                         help="Used to select specific model")
     return parser.parse_args()
 
 
@@ -157,7 +158,7 @@ def validate_schema(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
 
     extra = present - required
     if extra:
-        print(f" Dropping unexpected columns not in schema: {extra}")
+        print(f" Dropping {len(extra)} unexpected columns not in schema: {extra} ")
 
     return df[schema["features"]]
 
@@ -166,8 +167,8 @@ def validate_schema(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
 # Model artifacts
 # -----------------------------
 
-def load_artifacts(model_dir: Path) -> tuple:
-    pipeline_path = model_dir / "pipeline.pkl"
+def load_artifacts(model_dir: Path, model_name) -> tuple:
+    pipeline_path = model_dir / model_name
     schema_path   = model_dir / "schema.json"
 
     if not pipeline_path.exists():
@@ -301,8 +302,8 @@ GENERIC_RULES: list[tuple[str, str]] = [
 ]
 
 RISK_LEVEL_ACTIONS: dict[str, str] = {
-    "High Risk":   "Escalate to retention team immediately",
-    "Medium Risk": "Send a targeted retention promotion",
+    "High Risk": "Escalate to retention team immediately",
+    "Medium Risk": None,
     "Low Risk": "If required: Send a generic retention promotion",
 }
 
@@ -316,11 +317,12 @@ def generate_recommended_actions(
     factor_actions: list[str] = []
 
     for factor in risk_factors:
-        normalised = factor.lower().replace(" ", "").replace("_", "")
-        for pattern, action in GENERIC_RULES:
-            if re.search(pattern, normalised) and action not in seen:
-                seen.add(action)
-                factor_actions.append(action)
+        if risk_level != "Low Risk":
+            normalised = factor.lower().replace(" ", "").replace("_", "")
+            for pattern, action in GENERIC_RULES:
+                if re.search(pattern, normalised) and action not in seen:
+                    seen.add(action)
+                    factor_actions.append(action)
 
     factor_actions = factor_actions[:top_n]
 
@@ -505,7 +507,7 @@ def main():
     print("Engineering features ...")
     prediction_df = engineer_features(prediction_df)
 
-    pipeline, schema, low_threshold, medium_threshold, high_threshold = load_artifacts(model_dir) 
+    pipeline, schema, low_threshold, medium_threshold, high_threshold = load_artifacts(model_dir, f"{args.model}.pkl") 
 
     X = validate_schema(prediction_df, schema)
 

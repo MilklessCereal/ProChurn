@@ -21,6 +21,7 @@ from sklearn.model_selection import StratifiedKFold, cross_val_predict, train_te
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from xgboost import XGBClassifier
+# from openpyxl import load_workbook
 
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 warnings.filterwarnings("ignore")
@@ -60,6 +61,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--data",      required=True,                help="Path to labelled training CSV")
     parser.add_argument("--test_size", type=float, default=TEST_SIZE, help="Fraction of data held out for evaluation (default: 0.2)")
     parser.add_argument("--n-trials",  type=int,   default=N_TRIALS,  help="Number of Optuna trials for hyperparameter search (default: 50)")
+    parser.add_argument("--model",     required=True,                 help="Used to name specific models")
     return parser.parse_args()
 
 
@@ -363,10 +365,17 @@ def select_important_features(pipeline: Pipeline, X: pd.DataFrame, importance_th
 
     important = [name for name, imp in grouped.items() if imp >= importance_threshold]
     dropped   = [name for name, imp in grouped.items() if imp < importance_threshold]
-
+    
+    print("-- Feature Selection ------------------")
     if dropped:
-        print(f"[feature selection] Dropping {len(dropped)} low-importance features: {dropped}")
-    print(f"[feature selection] Retaining {len(important)} features above threshold {importance_threshold}")
+        print(f"Dropping {len(dropped)} low-importance features:")
+        for i in range(len(dropped)):
+            print(f"{i + 1}. {dropped[i]}")
+            
+    print(f"\nRetaining {len(important)} features above threshold {importance_threshold}")
+    for i in range(len(important)):
+                print(f"{i + 1}. {important[i]}")
+    print("----------------------------------------\n")
 
     return [col for col in X.columns if col in important]
 
@@ -401,18 +410,23 @@ def print_metrics(metrics: dict) -> None:
 # Artifact persistence
 # -----------------------------
 
-def save_artifacts(pipeline: Pipeline, schema: dict, metrics: dict, company: str) -> Path:
+def save_artifacts(pipeline: Pipeline, schema: dict, metrics: dict, company: str, model_name: str, metrics_exist_flag: bool) -> Path:
     model_dir = Path(f"models/{company}")
     model_dir.mkdir(parents=True, exist_ok=True)
 
-    joblib.dump(pipeline, model_dir / "pipeline.pkl")
+    joblib.dump(pipeline, model_dir / f"{model_name}.pkl")
 
     with open(model_dir / "schema.json", "w") as f:
         json.dump(schema, f, indent=4)
 
     metrics_df = pd.DataFrame([metrics])
-    metrics_df.to_csv(model_dir / "model_metrics.csv", index=False)
-
+    metrics_df.insert(0, column= "Model Version", value=model_name)
+    
+    if metrics_exist_flag == False:
+        metrics_df.to_csv(model_dir / "model_metrics.csv", index=True)
+    else:
+        metrics_df.to_csv(model_dir / "model_metrics.csv", mode='a', index=True, header=False)
+            
     return model_dir
 
 
@@ -425,6 +439,16 @@ def main():
 
     if not (0 < args.test_size < 1):
         raise ValueError(f"--test-size must be between 0 and 1 exclusively, got {args.test_size}")
+    
+    for files in Path(f"models/{args.company}").iterdir():
+        if args.model in files.name:
+            raise ValueError(f"Error: Model name already exists within the directory (*/models/{args.company})")
+    
+    metrics_csv_exist = False
+    
+    for files in Path(f"models/{args.company}").iterdir():
+        if files.name == "model_metrics.csv":
+            metrics_csv_exist = True
 
     print(f"Loading dataset from '{args.data}' ...")
     df = load_and_clean(args.data)
@@ -481,8 +505,8 @@ def main():
     metrics = evaluate_model(final_pipeline, X_test_reduced, y_test)
     print_metrics(metrics)
 
-    model_dir = save_artifacts(final_pipeline, schema, metrics, args.company)
-    print(f"Artifacts saved to {model_dir}/")
+    model_dir = save_artifacts(final_pipeline, schema, metrics, args.company, args.model, metrics_csv_exist)
+    print(f"Artifacts saved to {model_dir}\\")
     print("Training complete.")
 
 
